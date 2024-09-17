@@ -24,12 +24,13 @@ void serve_dynamic(int fd, char* fname, char* cgi);
 void get_filetype(char* fname, char* ftype);
 ////
 
-void main(void){
+int main(void){
     int l_fd, c_fd;
-    char hostname[MAXLINE], port[MAXLINE], test_buff[MAXLINE], test[MAXLINE];
+    char hostname[MAXLINE], port[MAXLINE];
     socklen_t clientlen;
     struct sockaddr_storage clientaddr;
-    rio_t rio;
+    // rio_t rio; //일회성 에코
+    // char test[MAXLINE], test_buff[MAXLINE]; // 일회성 에코
 
     l_fd = open_listenfd(PORTNUM);
     while(1){
@@ -53,6 +54,7 @@ void main(void){
         // 연결 끊기
         close(c_fd);
     }
+    return 0;
 }
 
 void doit(int fd){
