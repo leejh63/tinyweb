@@ -115,7 +115,7 @@ void c_error(int fd, char* m, char* ernum, char* smsg, char* lmsg){
 
 // head
     // head 입력 및 출력
-    sprintf(head, "HTTP/1.0 %s %s\r\n", ernum, smsg); 
+    sprintf(head, "HTTP/1.? %s %s\r\n", ernum, smsg); 
     rio_writen(fd, head, strlen(head));
     sprintf(head, "content-type: text/html\r\n");
     rio_writen(fd, head, strlen(head));
@@ -169,7 +169,7 @@ void serve_static(int fd, char* fname, int fsize){
     char*src_p, ftype[MAXLINE], b[MAXLINE];
 
     get_filetype(fname, ftype);
-    sprintf(b, "HTTP/1.0 200 OK\r\n");
+    sprintf(b, "HTTP/1.? 200 OK\r\n");
     sprintf(b, "%sServer: Tiny Web Server\r\n", b);
     sprintf(b, "%sConnection: Close\r\n", b);
     sprintf(b, "%sConnection-length: %d\r\n", b, fsize);
@@ -198,6 +198,9 @@ void get_filetype(char* fname, char* ftype){
     }else if (strstr(fname,".jpg")){
         strcpy(ftype, "image/jpeg");
 
+    }else if(strstr(fname,".mp4")){
+        strcpy(ftype, "video/mp4");
+
     }else{
         strcpy(ftype, "image/plain");
     }
@@ -206,7 +209,7 @@ void get_filetype(char* fname, char* ftype){
 void serve_dynamic(int fd, char* fname, char* cgi){
     char b[MAXLINE], *elist[] = { NULL };
 
-    sprintf(b, "HTTP/1.0 200 OK\r\n");
+    sprintf(b, "HTTP/?.0 200 OK\r\n");
     Rio_writen(fd, b, strlen(b));
     sprintf(b, "Server: Tiny Web Server\r\n");
     Rio_writen(fd, b, strlen(b));
