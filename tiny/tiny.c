@@ -1,5 +1,6 @@
 #include "csapp.h"
 #include <strings.h>
+#include <signal.h>
 ////
 #define PORTNUM "5125"
 #define SERVER_ADDR "43.203.26.16"
@@ -18,7 +19,7 @@ void get_filetype(char* fname, char* ftype);
 ////
 
 int main(void){
-
+    signal(SIGPIPE, SIG_IGN);
     int l_fd, c_fd;
     char hostname[MAXLINE], port[MAXLINE];
     socklen_t clientlen;
@@ -60,15 +61,21 @@ void doit(int fd){
     rio_t doitrio;
 
     rio_readinitb(&doitrio, fd);
-    printf("waiting for request\n\n");
+    printf("waiting for request\n");
     rio_readlineb(&doitrio, b, MAXLINE);
     printf("Requested Header :\n");
     sscanf(b, "%s %s %s", m, uri, v);
     printf("method: %s\nuri: %s\nversion: %s\n", m, uri, v);
 
-    if (strcasecmp(m, "GET")){// get일 경우 0 반환
+
+
+    if (!(strcasecmp(m, "GET") ^ strcasecmp(m, "HHEAD"))){// get일 경우 0 반환
         c_error(fd, m, "501", "NOT implemented", "Tiny does not implement this method");
         return;
+    }
+
+    if (!strcasecmp(m,"HHEAD")){
+        setenv("HHEAD", "HHEAD", 1);
     }
 
     r_rqhs(&doitrio);
@@ -110,7 +117,7 @@ void c_error(int fd, char* m, char* ernum, char* smsg, char* lmsg){
     sprintf(body, "%s<hr><em>TThhee TTIINNYY WWEEBB SSEERRVVEERR</em>\r\n", body);
 
     // head 입력 및 출력
-    sprintf(head, "HTTP/1.0 %s %s\r\n", ernum, smsg);
+    sprintf(head, "HTTP/1.1 %s %s\r\n", ernum, smsg);
     rio_writen(fd, head, strlen(head));
     sprintf(head, "content-type: text/html\r\n");
     rio_writen(fd, head, strlen(head));
@@ -132,6 +139,7 @@ void r_rqhs(rio_t *rio){
     }
     return;
 }
+
 int p_uri(char* uri, char* fname, char* cgi){
 
     char *ptr;
@@ -163,31 +171,59 @@ int p_uri(char* uri, char* fname, char* cgi){
         return 0;
     }
 }
+
 void serve_static(int fd, char* fname, int fsize){
 
     int src_fd;
-    char*src_p, ftype[MAXLINE], b[MAXLINE];
+    char* src_p, ftype[MAXLINE], b[MAXLINE];
 
     get_filetype(fname, ftype);
-    sprintf(b, "HTTP/1.0 200 OK\r\n");
+    sprintf(b, "HTTP/1.1 200 OK\r\n");
     sprintf(b, "%sServer: Tiny Web Server\r\n", b);
-    sprintf(b, "%sConnection: Close\r\n", b);
-    sprintf(b, "%sConnection-length: %d\r\n", b, fsize);
-    sprintf(b, "%sConnection-type: %s\r\n\r\n", b, ftype);
+    sprintf(b, "%sConnection: keep-alive\r\n", b);
+    sprintf(b, "%sContent-length: %d\r\n", b, fsize);  
+    sprintf(b, "%sContent-type: %s\r\n\r\n", b, ftype); 
+
+
+
     rio_writen(fd, b, strlen(b));
-    printf("Respinse headers:\n");
+    printf("Response headers:\n");
     printf("%s", b);
-
+    if (getenv("HHEAD")){// hhead일경우
+        return;
+    }
+    
     src_fd = open(fname, O_RDONLY, 0);
-
-    src_p = mmap(0, fsize, PROT_READ, MAP_PRIVATE, src_fd, 0);
-
+    src_p = Mmap(0, fsize, PROT_READ, MAP_PRIVATE, src_fd, 0);
+    Rio_writen(fd, src_p, fsize);
     close(src_fd);
+    Munmap(src_p, fsize);
+    
+    // // 파일 크기만큼 메모리 할당
+    // src_p = (char*)malloc(fsize);
+    // if (src_p == NULL) {
+    //     perror("malloc");
+    //     close(src_fd);
+    //     return;
+    // }
 
-    rio_writen(fd, src_p, fsize);
+    // // 파일 내용을 메모리에 읽어옴
+    // if (read(src_fd, src_p, fsize) != fsize) {
+    //     perror("read");
+    //     free(src_p);
+    //     close(src_fd);
+    //     return;
+    // }
 
-    munmap(src_p, fsize);
+    // close(src_fd);
+
+    // // 클라이언트에게 파일 내용 전송
+    // rio_writen(fd, src_p, fsize);
+
+    // // 메모리 해제
+    // free(src_p);
 }
+
 
 void get_filetype(char* fname, char* ftype){
 
@@ -215,7 +251,7 @@ void serve_dynamic(int fd, char* fname, char* cgi){
 
     char b[MAXLINE], *elist[] = { NULL };
 
-    sprintf(b, "HTTP/1.0 200 OK\r\n");
+    sprintf(b, "HTTP/1.1 200 OK\r\n");
     Rio_writen(fd, b, strlen(b));
     sprintf(b, "Server: Tiny Web Server\r\n");
     Rio_writen(fd, b, strlen(b));
