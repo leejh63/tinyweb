@@ -42,13 +42,12 @@ int main(void){
     
     char *buf, *p, *p1;
     char arg1[MAXLINE], arg2[MAXLINE],content[MAXLINE];
-    int n1=0, n2=0, HHEAD=0;
+    int n1=0, n2=0;
 
     /* extract the two arguments*/
     if ((buf=getenv("QUERY_STRING")) != NULL){
         if (strstr(buf,"none=")){
             sscanf(buf, "none=%d&ntwo=%d", &n1, &n2);
-
         }
         else{
             p = strchr(buf, '&');
@@ -73,13 +72,10 @@ int main(void){
     printf("Content-length : %d\r\n", (int)strlen(content));
     printf("Content-type: text/html\r\n\r\n");
 
-    if (getenv("HHEAD")){// hhead일경우
-        fflush(stdout);
-        exit(0);
+    if (!getenv("HHEAD")){// hhead일경우
+        printf("%s",content);
     }
-
-    printf("%s",content);
-    
+    unsetenv("HHEAD");
     fflush(stdout);
     exit(0);
 }

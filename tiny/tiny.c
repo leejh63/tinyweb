@@ -53,7 +53,6 @@ int main(void){
     return 0;
 }
 void doit(int fd){
-
     int is_static;
     struct stat sbuf;
     char b[MAXLINE], m[MAXLINE], uri[MAXLINE], v[MAXLINE];
@@ -169,12 +168,76 @@ int p_uri(char* uri, char* fname, char* cgi){
         return 0;
     }
 }
+//////////////////////////////////////////////////////////////////////
+// void serve_static(int fd, char* fname, int fsize) {
+//     int src_fd, n;
+//     char* src_p, ftype[MAXLINE], b[MAXLINE];
+//     int start = 0, end = fsize - 1;
+//     char *range_header = getenv("HTTP_RANGE");  // Range 헤더 가져오기
+
+//     // 파일 타입 가져오기
+//     get_filetype(fname, ftype);
+
+//     // Range 헤더가 있는지 확인
+//     if (range_header) {
+//         // Range 요청이 있을 경우 처리
+//         if (sscanf(range_header, "bytes=%d-%d", &start, &end) == 2) {
+//             if (end == -1) end = fsize - 1;  // end가 없을 경우 파일 끝까지 전송
+//         } else if (sscanf(range_header, "bytes=%d-", &start) == 1) {
+//             end = fsize - 1;  // start만 있을 경우 파일 끝까지 전송
+//         } else {
+//             // 잘못된 Range 요청이면 전체 파일 전송
+//             start = 0;
+//             end = fsize - 1;
+//         }
+//     }
+
+//     // 응답 헤더 작성
+//     if (range_header) {
+//         sprintf(b, "HTTP/1.1 206 Partial Content\r\n");
+//         sprintf(b, "%sContent-Range: bytes %d-%d/%d\r\n", b, start, end, fsize);
+//     } else {
+//         sprintf(b, "HTTP/1.1 200 OK\r\n");
+//     }
+
+//     sprintf(b, "%sServer: Tiny Web Server\r\n", b);
+//     sprintf(b, "%sConnection: keep-alive\r\n", b);
+//     sprintf(b, "%sContent-length: %d\r\n", b, end - start + 1);
+//     sprintf(b, "%sContent-type: %s\r\n\r\n", b, ftype);
+
+//     // 응답 헤더 전송
+//     rio_writen(fd, b, strlen(b));
+
+//     // 요청한 범위만큼 파일 전송
+//     printf("Response headers:\n");
+//     printf("%s", b);
+
+//     if (getenv("HHEAD")) {  // HHEAD 환경 변수 체크
+//         unsetenv("HHEAD");
+//         return;
+//     }
+
+//     // 파일을 읽어서 클라이언트에게 전송
+//     src_fd = open(fname, O_RDONLY, 0);
+//     if (src_fd < 0) {
+//         perror("open");
+//         return;
+//     }
+
+//     // 요청된 범위만큼 파일을 전송
+//     src_p = Mmap(0, fsize, PROT_READ, MAP_PRIVATE, src_fd, 0);
+//     Rio_writen(fd, src_p + start, end - start + 1);  // 요청된 범위만큼 전송
+
+//     close(src_fd);
+//     Munmap(src_p, fsize);
+// }
+//////////////////////////////////////////////////////////
 
 void serve_static(int fd, char* fname, int fsize){
 
-    int src_fd;
+    int src_fd, n;
     char* src_p, ftype[MAXLINE], b[MAXLINE];
-
+    
     get_filetype(fname, ftype);
     sprintf(b, "HTTP/1.1 200 OK\r\n");
     sprintf(b, "%sServer: Tiny Web Server\r\n", b);
@@ -188,38 +251,40 @@ void serve_static(int fd, char* fname, int fsize){
     printf("Response headers:\n");
     printf("%s", b);
     if (getenv("HHEAD")){// hhead일경우
+        unsetenv("HHEAD");
         return;
     }
     
     src_fd = open(fname, O_RDONLY, 0);
     src_p = Mmap(0, fsize, PROT_READ, MAP_PRIVATE, src_fd, 0);
     Rio_writen(fd, src_p, fsize);
+
     close(src_fd);
     Munmap(src_p, fsize);
-    
-    // // 파일 크기만큼 메모리 할당
-    // src_p = (char*)malloc(fsize);
-    // if (src_p == NULL) {
-    //     perror("malloc");
-    //     close(src_fd);
-    //     return;
-    // }
 
-    // // 파일 내용을 메모리에 읽어옴
-    // if (read(src_fd, src_p, fsize) != fsize) {
-    //     perror("read");
-    //     free(src_p);
-    //     close(src_fd);
-    //     return;
-    // }
+// 파일 크기만큼 메모리 할당
+// src_p = (char*)malloc(fsize);
+// if (src_p == NULL) {
+//     perror("malloc");
+//     close(src_fd);
+//     return;
+// }
 
-    // close(src_fd);
+// // 파일 내용을 메모리에 읽어옴
+// if (read(src_fd, src_p, fsize) != fsize) {
+//     perror("read");
+//     free(src_p);
+//     close(src_fd);
+//     return;
+// }
 
-    // // 클라이언트에게 파일 내용 전송
-    // rio_writen(fd, src_p, fsize);
+// close(src_fd);
 
-    // // 메모리 해제
-    // free(src_p);
+// // 클라이언트에게 파일 내용 전송
+// rio_writen(fd, src_p, fsize);
+
+// // 메모리 해제
+// free(src_p);
 }
 
 
