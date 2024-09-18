@@ -46,15 +46,19 @@ int main(void){
 
     /* extract the two arguments*/
     if ((buf=getenv("QUERY_STRING")) != NULL){
-        sscanf(buf, "none=%d&ntwo=%d", &n1, &n2);
-        // p = strchr(buf, '&');
-        // *p = '\0';
-        // strcpy(arg1, buf);
-        // strcpy(arg2, p+1);
-        // n1 = atoi(arg1);
-        // // printf("%d------\n", n1);
-        // n2 = atoi(arg2);
-        // // printf("%d------\n", n2);
+        if (strstr(buf,"none=")){
+            sscanf(buf, "none=%d&ntwo=%d", &n1, &n2);
+
+        }
+        else{
+            p = strchr(buf, '&');
+            *p = '\0';
+            strcpy(arg1, buf);
+            strcpy(arg2, p+1);
+            n1 = atoi(arg1);
+            n2 = atoi(arg2);
+        }
+
     }
 
     /* Make the response body*/

@@ -67,8 +67,6 @@ void doit(int fd){
     sscanf(b, "%s %s %s", m, uri, v);
     printf("method: %s\nuri: %s\nversion: %s\n", m, uri, v);
 
-
-
     if (!(strcasecmp(m, "GET") ^ strcasecmp(m, "HHEAD"))){// get일 경우 0 반환
         c_error(fd, m, "501", "NOT implemented", "Tiny does not implement this method");
         return;
