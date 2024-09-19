@@ -75,7 +75,6 @@ int main(void){
     if (!getenv("HHEAD")){// hhead일경우
         printf("%s",content);
     }
-    unsetenv("HHEAD");
     fflush(stdout);
     exit(0);
 }
