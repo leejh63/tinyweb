@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include "csapp.h"
+#include <signal.h>
 
 /* Recommended max cache and object sizes */
 #define MAX_CACHE_SIZE 1049000
@@ -14,6 +15,7 @@ static const char *user_agent_hdr =
 
 int main(int argc, char **agrv)
 {
+  signal(SIGPIPE, SIG_IGN);
   int c_l_fd, c_fd;
   char hname[MAXLINE], hport[MAXLINE];
   socklen_t clilen;
@@ -28,7 +30,7 @@ int main(int argc, char **agrv)
     c_fd = Accept(c_l_fd, (SA *)&cliaddr, &clilen);
     Getnameinfo((SA *)&cliaddr, clilen, hname, MAXLINE, hport, MAXLINE, 0);
     printf("..connecting..\nhostname:%s\nconnect port: %s\n", hname, hport);
-    rio_writen(c_fd, "..connected..\n", 14);
+    // rio_writen(c_fd, "..connected..\n", 14);
     doit(c_fd);
     close(c_fd);
   }
@@ -36,7 +38,7 @@ int main(int argc, char **agrv)
 
 void doit(int c_fd)
 {
-  signal(SIGPIPE, SIG_IGN);
+  // signal(SIGPIPE, SIG_IGN);
   char buF[MAXLINE], meT[MAXLINE], urL[MAXLINE], veR[MAXLINE];
   char doM[MAXLINE], urI[MAXLINE], porT[MAXLINE], htT[MAXLINE];
   char head[MAXLINE], ptosF[MAXLINE], testbuF[MAXLINE];
