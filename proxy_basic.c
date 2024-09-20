@@ -7,7 +7,6 @@
 #define MAX_OBJECT_SIZE 102400
 //
 int parser(char *urL, char *doM, char *urI, char* porT, char* htT);
-void *thread_test(void *vargp);
 //
 /* You won't lose style points for including this long line in your code */
 static const char *user_agent_hdr =
@@ -17,12 +16,10 @@ static const char *user_agent_hdr =
 int main(int argc, char **agrv)
 {
   signal(SIGPIPE, SIG_IGN);
-  int c_l_fd, *c_fd;
+  int c_l_fd, c_fd;
   char hname[MAXLINE], hport[MAXLINE];
   socklen_t clilen;
   struct sockaddr cliaddr;
-  pthread_t t_id;
-
   printf("%s", user_agent_hdr);
 
   c_l_fd = Open_listenfd(agrv[1]);
@@ -30,23 +27,15 @@ int main(int argc, char **agrv)
   {
 
     clilen = sizeof(cliaddr);
-    c_fd = (int*)Malloc(sizeof(int));
-    *c_fd = Accept(c_l_fd, (SA *)&cliaddr, &clilen);
+    c_fd = Accept(c_l_fd, (SA *)&cliaddr, &clilen);
     Getnameinfo((SA *)&cliaddr, clilen, hname, MAXLINE, hport, MAXLINE, 0);
     printf("..connecting..\nhostname:%s\nconnect port: %s\n", hname, hport);
     // rio_writen(c_fd, "..connected..\n", 14);
-    Pthread_create(&t_id, NULL, thread_test, c_fd);
-  }
-}
 
-void *thread_test(void *vargp)
-{
- int c_fd = *((int*)vargp);
-  Pthread_detach(pthread_self());
-  Free(vargp);
-  doit(c_fd);
-  Close(c_fd);
-  return NULL;
+    doit(c_fd);
+    
+    close(c_fd);
+  }
 }
 
 void doit(int c_fd)
