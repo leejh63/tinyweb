@@ -2,8 +2,7 @@
 #include <strings.h>
 #include <signal.h>
 ////
-#define PORTNUM "5125"
-#define SERVER_ADDR "43.203.26.16"
+
 typedef struct sockaddr SA;
 
 ////
@@ -117,7 +116,7 @@ void c_error(int fd, char* m, char* ernum, char* smsg, char* lmsg){
     sprintf(body, "%s<body style=\"background-color: #FFA500;\">\r\n", body);
     sprintf(body, "%s%s: %s\r\n", body, ernum, smsg);
     sprintf(body, "%s<p>%s: %s\r\n", body, lmsg, m);
-    sprintf(body, "%s<hr><em>TThhee TTIINNYY WWEEBB SSEERRVVEERR</em>\r\n", body);
+    sprintf(body, "%s<hr><em>The TINY WEB SERVER</em>\r\n", body);
 
     // head 입력 및 출력
     sprintf(head, "HTTP/1.1 %s %s\r\n", ernum, smsg);

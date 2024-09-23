@@ -14,6 +14,62 @@ static const char *user_agent_hdr =
     "User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:10.0.3) Gecko/20120305 "
     "Firefox/10.0.3\r\n";
 
+pthread_mutex_t cache_mutex = PTHREAD_MUTEX_INITIALIZER; 
+
+typedef struct {
+    char url[MAXLINE];     
+    char response[MAX_OBJECT_SIZE]; 
+    int response_size;     
+} cache_entry_t;
+
+#define CACHE_SIZE 15 
+cache_entry_t cache[CACHE_SIZE];
+int cache_count = 0;
+
+
+int cache_find(char *url, char *response, int *response_size) {
+
+  pthread_mutex_lock(&cache_mutex);
+  
+  for (int i = 0; i < cache_count; i++) {
+      if (strcmp(cache[i].url, url) == 0) {
+          strcpy(response, cache[i].response);
+          *response_size = cache[i].response_size; 
+
+          pthread_mutex_unlock(&cache_mutex);
+          
+          return 1; 
+      }
+  }
+
+  pthread_mutex_unlock(&cache_mutex);
+
+  return 0; 
+}
+
+
+void cache_insert(char *url, char *response, int response_size) {
+
+    pthread_mutex_lock(&cache_mutex);
+
+    if (cache_count >= CACHE_SIZE) {
+
+        for (int i = 1; i < CACHE_SIZE; i++) {
+            cache[i-1] = cache[i]; 
+        }
+        cache_count--;
+    }
+
+
+    strcpy(cache[cache_count].url, url);
+    memcpy(cache[cache_count].response, response, response_size);
+    cache[cache_count].response_size = response_size;
+    cache_count++;
+
+    pthread_mutex_unlock(&cache_mutex);
+}
+
+
 int main(int argc, char **agrv)
 {
   signal(SIGPIPE, SIG_IGN);
@@ -39,7 +95,6 @@ int main(int argc, char **agrv)
   }
 }
 
-
 void *thread_test(void *vargp)
 {
  int c_fd = *((int*)vargp);
@@ -52,12 +107,11 @@ void *thread_test(void *vargp)
 
 void doit(int c_fd)
 {
-  // signal(SIGPIPE, SIG_IGN);
   char buF[MAXLINE], meT[MAXLINE], urL[MAXLINE], veR[MAXLINE];
   char doM[MAXLINE], urI[MAXLINE], porT[MAXLINE], htT[MAXLINE];
   char head[MAXLINE], ptosF[MAXLINE], testbuF[MAXLINE];
-  char ptosbuF[MAXLINE], stopbuF[MAXLINE];
-  int s_fd;
+  char ptosbuF[MAXLINE], stopbuF[MAXLINE], cache_data[MAX_OBJECT_SIZE], server_response[MAX_OBJECT_SIZE];
+  int s_fd, response_size, n, total_size=0;
   rio_t doitrio, serrio;
 
 
@@ -67,41 +121,36 @@ void doit(int c_fd)
   sscanf(buF, "%s %s %s", meT, urL, veR);
   printf("method: %s\nurl: %s\nversion: %s\n\n", meT, urL, veR);
 
+  if (cache_find(urL, cache_data, &response_size)) {
+      printf("Cache hit: %s\n", urL);
+      Rio_writen(c_fd, cache_data, response_size);
+      return;
+  }
+
   parser(urL, doM, urI, porT, htT);
   sprintf(ptosF, "%s %s %s\r\n", meT, urI, veR);
   sprintf(ptosF, "%sHost: %s\r\n", ptosF, doM);
   sprintf(ptosF, "%sProxy-Connection: close\r\n", ptosF);
   sprintf(ptosF, "%sUser-Agent: ProxyServer/1.0\r\n\r\n", ptosF);
-  
-  ///testtesttesttestestestestestesdtestes
-  // sprintf(testbuF, "url: %s\r\n", urL);
-  // sprintf(testbuF, "%s--parser--\r\n", testbuF);
-  // sprintf(testbuF, "%shttp: %s\r\n", testbuF, htT);
-  // sprintf(testbuF, "%sdomain: %s\r\n", testbuF, doM);
-  // sprintf(testbuF, "%sport: %s\r\n", testbuF, porT);
-  // sprintf(testbuF, "%suri: %s\r\n", testbuF, urI);
 
-  // sprintf(head, "HTTP/1.1 200 OK\r\n");
-  // Rio_writen(c_fd, head, strlen(head));
-  // sprintf(head, "content-type: text/html\r\n");
-  // Rio_writen(c_fd, head, strlen(head));
-  // sprintf(head, "content-length: %d\r\n\r\n", (int)strlen(testbuF));
-  // Rio_writen(c_fd, head, strlen(head));
-
-  // Rio_writen(c_fd, testbuF, strlen(testbuF));
-  // Rio_writen(c_fd, ptosF, strlen(ptosF));
-  ///testtesttesttestestestestestesdtestes
-  // printf("1Request sent to Tiny server:\n%s\n", ptosF);
   s_fd = Open_clientfd(doM, porT);
 
   Rio_readinitb(&serrio, s_fd);
   Rio_writen(s_fd, ptosF, strlen(ptosF));
-  int n;
+
   while ((n = Rio_readlineb(&serrio, stopbuF, MAXLINE)) > 0) {
-    printf("%s\n", stopbuF);
-    Rio_writen(c_fd, stopbuF, n);
+      if (total_size + n < MAX_OBJECT_SIZE) {
+          memcpy(server_response + total_size, stopbuF, n);
+      }
+      total_size += n;
+      Rio_writen(c_fd, stopbuF, n);
   }
   close(s_fd);
+
+  if (total_size < MAX_OBJECT_SIZE) {
+      cache_insert(urL, server_response, total_size);
+  }
+
 }
 
 int parser(char *urL, char *doM, char *urI, char* porT, char* htT)
@@ -123,7 +172,6 @@ int parser(char *urL, char *doM, char *urI, char* porT, char* htT)
 
   }
 
-  // 포트번호 확인을 위해 호스트/포트 구분
   end = strchr(start, '/');
   if (end != NULL) {
 
@@ -150,3 +198,4 @@ int parser(char *urL, char *doM, char *urI, char* porT, char* htT)
       strcpy(porT, "80");
   }
 }
+
